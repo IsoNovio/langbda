@@ -319,9 +319,6 @@ impl<K: Display> TreeModel<K> {
             if let Some(moved_id) = node.get_moved() {
                 write!(f, " --> [{}]", moved_id)?;
             }
-            /* debug */
-            write!(f, "[parent: {}]", node.get_parent().unwrap_or(0))?;
-
             writeln!(f, " {}", node.get_value())?;
             indent += 4;
         }

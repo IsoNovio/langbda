@@ -74,62 +74,62 @@ Note that the parser supports branching.
 # Interpreting "the child ate an apple in the room." as Sentence in English
 
 Tree:
-[0][parent: 0] Sentence--clause:statement
-    [★ 42][parent: 43] ClauseP--clause:statement
-        [★ 10][parent: 28] TenseP
-            [9][parent: 10] TenseS--number:sg
-                [★ 3][parent: 4] DetH--number:sg
-                    [1][parent: 2] the
-                [5][parent: 4] NounP--number:sg
-                    [6][parent: 7] child
-            [★ 11][parent: 10] TenseB
-                [12] --> [9][parent: 13] LittleVS
-                [★ 14][parent: 13] LittleVB--tense:past
-                    [★ 16][parent: 17] VerbH--tense:past--transitive
-                        [15][parent: 16] ate
-                    [18][parent: 17] DetP--case:obj--number:sg
-                        [★ 20][parent: 21] DetH--number:sg
-                            [19][parent: 20] an
-                        [22][parent: 21] NounP--number:sg
-                            [23][parent: 24] apple
-        [29][parent: 28] PrepP
-            [★ 31][parent: 32] PrepH
-                [30][parent: 31] in
-            [33][parent: 32] DetP--number:sg
-                [★ 36][parent: 37] DetH--number:sg
-                    [34][parent: 35] the
-                [38][parent: 37] NounP--number:sg
-                    [39][parent: 40] room
-    [44][parent: 43] Punct--clause:statement
-        [45][parent: 46] .
+[0] Sentence--clause:statement
+    [★ 42] ClauseP--clause:statement
+        [9] TenseS--number:sg
+            [★ 3] DetH--number:sg
+                [1] the
+            [5] NounP--number:sg
+                [6] child
+        [★ 11] TenseB
+            [12] --> [9] LittleVS
+            [★ 14] LittleVB--tense:past
+                [★ 16] VerbH--tense:past--transitive
+                    [15] ate
+                [18] DetP--case:obj--number:sg
+                    [★ 21] DetP--number:sg
+                        [★ 20] DetH--number:sg
+                            [19] an
+                        [22] NounP--number:sg
+                            [23] apple
+                    [26] PrepP
+                        [★ 28] PrepH
+                            [27] in
+                        [30] DetP--number:sg
+                            [★ 33] DetH--number:sg
+                                [31] the
+                            [35] NounP--number:sg
+                                [36] room
+    [44] Punct--clause:statement
+        [45] .
 
 Tree:
-[0][parent: 0] Sentence--clause:statement
-    [★ 42][parent: 43] ClauseP--clause:statement
-        [9][parent: 10] TenseS--number:sg
-            [★ 3][parent: 4] DetH--number:sg
-                [1][parent: 2] the
-            [5][parent: 4] NounP--number:sg
-                [6][parent: 7] child
-        [★ 11][parent: 10] TenseB
-            [12] --> [9][parent: 13] LittleVS
-            [★ 14][parent: 13] LittleVB--tense:past
-                [★ 16][parent: 17] VerbH--tense:past--transitive
-                    [15][parent: 16] ate
-                [18][parent: 17] DetP--case:obj--number:sg
-                    [★ 21][parent: 25] DetP--number:sg
-                        [★ 20][parent: 21] DetH--number:sg
-                            [19][parent: 20] an
-                        [22][parent: 21] NounP--number:sg
-                            [23][parent: 24] apple
-                    [26][parent: 25] PrepP
-                        [★ 28][parent: 29] PrepH
-                            [27][parent: 28] in
-                        [30][parent: 29] DetP--number:sg
-                            [★ 33][parent: 34] DetH--number:sg
-                                [31][parent: 32] the
-                            [35][parent: 34] NounP--number:sg
-                                [36][parent: 37] room
-    [44][parent: 43] Punct--clause:statement
-        [45][parent: 46] .
+[0] Sentence--clause:statement
+    [★ 42] ClauseP--clause:statement
+        [★ 10] TenseP
+            [9] TenseS--number:sg
+                [★ 3] DetH--number:sg
+                    [1] the
+                [5] NounP--number:sg
+                    [6] child
+            [★ 11] TenseB
+                [12] --> [9] LittleVS
+                [★ 14] LittleVB--tense:past
+                    [★ 16] VerbH--tense:past--transitive
+                        [15] ate
+                    [18] DetP--case:obj--number:sg
+                        [★ 20] DetH--number:sg
+                            [19] an
+                        [22] NounP--number:sg
+                            [23] apple
+        [29] PrepP
+            [★ 31] PrepH
+                [30] in
+            [33] DetP--number:sg
+                [★ 36] DetH--number:sg
+                    [34] the
+                [38] NounP--number:sg
+                    [39] room
+    [44] Punct--clause:statement
+        [45] .
 ```
