@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     let dialect = English::init();
     println!("{}", dialect);
 
-    let sentence = "the child ate an apple.";
+    let sentence = "the child ate an apple in the room.";
     let target = "Sentence";
     println!(
         "Interpreting \"{sentence}\" as {target} in {}",

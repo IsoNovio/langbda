@@ -12,9 +12,11 @@ DetH-number = (NounP-number > DetP-number)
 DetP = DetP-case
 DetP-subj = TenseS
 DetP-subj = LittleVS
+DetP = (PrepP > DetP)
 
 TenseS = ((MOVED(LittleVS) >> TenseB) >> TenseP)
 TenseP = ClauseP
+TenseP = (PrepP > TenseP)
 
 LittleVS = (LittleVB >> LittleVP)
 LittleVP = TenseB
@@ -25,6 +27,8 @@ VerbP = LittleVB
 ClauseP = ClauseP-clause
 ClauseP-clause = (Punct-clause > Sentence-clause)
 
+PrepH = (DetP > PrepP)
+
 [Lexical]
 # det
 the = DetH
@@ -33,9 +37,13 @@ an = DetH-sg
 # nouns
 child = NounP-sg
 apple = NounP-sg
+room = NounP-sg
 
 # verbs
 ate = VerbH-past-transitive
 
 # punctuations
 . = Punct-statement
+
+# prepositions
+in = PrepH
