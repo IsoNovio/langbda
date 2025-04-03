@@ -42,8 +42,8 @@ room = NounP-sg
 # verbs
 ate = VerbH-past-transitive
 
-# punctuations
-. = Punct-statement
-
 # prepositions
 in = PrepH
+
+# punctuations
+. = Punct-statement
