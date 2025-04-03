@@ -1,27 +1,37 @@
-mod feature;
-mod direction;
-mod bintree;
-mod lexicon;
-mod syntax_node;
-mod sentence;
+mod cognitive;
+mod dialect;
+mod error;
+mod interner;
 mod interpreter;
+mod lexicon;
+mod logger;
+mod syntax;
+mod tokenizer;
+mod trie;
 
-use crate::lexicon::Lexicon;
-use crate::interpreter::{Interpreter, LOT};
+use self::cognitive::{LambdaModel, TreeModel};
+use self::dialect::{Dialect, English};
+use self::error::Result;
+use self::interpreter::{follow, interpret};
+use self::logger::init_logger;
 
-fn main() {
-    let sentence = "Whose naughty child ate the apple in the room?";
-    let target = "S";
-    let lexicon_file = "src/lexicons/en.lexicon";
-    let lexicon_input = std::fs::read_to_string(lexicon_file).unwrap();
+fn main() -> Result<()> {
+    init_logger();
 
-    let lexicon = Lexicon::from_str(&lexicon_input).unwrap();
+    let dialect = English::init();
+    println!("{}", dialect);
 
-    let mut interp = Interpreter::new(sentence, target, &lexicon);
-    let results = interp.run().unwrap_or(Vec::new());
-    let results = LOT::from_syntax_trees(&results);
-    println!("There are {} parsing results:", results.len());
-    for result in results.iter() {
-        println!("{}", result);
+    let sentence = "the child ate an apple.";
+    let target = "Sentence";
+    println!(
+        "Interpreting \"{sentence}\" as {target} in {}",
+        dialect.name()
+    );
+    let result = interpret::<_, LambdaModel<_>>(&dialect, sentence, target)?;
+    for actions in result {
+        let tree = follow::<_, TreeModel<_>>(target, actions)?;
+        println!("Tree:\n{}", tree);
     }
+
+    Ok(())
 }

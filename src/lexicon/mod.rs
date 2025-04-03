@@ -1,7 +1,10 @@
-mod lexicon;
-mod feature_topology;
-mod parser;
-mod interpretation;
+mod entry;
+mod node;
+pub mod parser;
+mod simple;
+mod r#trait;
 
-pub use lexicon::Lexicon;
-pub use interpretation::Interpretation;
+pub use entry::LexiconEntry;
+pub use node::LexiconNode;
+pub use simple::SimpleLexicon;
+pub use r#trait::Lexicon;

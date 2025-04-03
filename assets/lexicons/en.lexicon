@@ -1,0 +1,41 @@
+[Features]
+# features
+tense = present, past, future
+number = sg, pl
+person = 1st, 2nd, 3rd
+case = subj, obj
+clause = question, statement, exclamation
+
+[Functional]
+DetH = DetH-number
+DetH-number = (NounP-number > DetP-number)
+DetP = DetP-case
+DetP-subj = TenseS
+DetP-subj = LittleVS
+
+TenseS = ((MOVED(LittleVS) >> TenseB) >> TenseP)
+TenseP = ClauseP
+
+LittleVS = (LittleVB >> LittleVP)
+LittleVP = TenseB
+
+VerbH-transitive = (DetP-obj > VerbP)
+VerbP = LittleVB
+
+ClauseP = ClauseP-clause
+ClauseP-clause = (Punct-clause > Sentence-clause)
+
+[Lexical]
+# det
+the = DetH
+an = DetH-sg
+
+# nouns
+child = NounP-sg
+apple = NounP-sg
+
+# verbs
+ate = VerbH-past-transitive
+
+# punctuations
+. = Punct-statement

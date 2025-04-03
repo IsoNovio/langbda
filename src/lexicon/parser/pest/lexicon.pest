@@ -1,0 +1,29 @@
+WHITESPACE = _{ " " }
+COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* ~ NEWLINE* }
+
+lexicon = _{ SOI ~ section* ~ EOI }
+section = _{ feature_section | functional_section | lexical_section }
+
+feature_section = { "[Features]" ~ NEWLINE* ~ feature_entry* }
+feature_entry = { feature_category ~ "=" ~ feature_value_set ~ NEWLINE* }
+
+functional_section = { "[Functional]" ~ NEWLINE* ~ functional_entry* }
+functional_entry = { feature_set ~ "=" ~ syntax_node ~ NEWLINE* }
+
+lexical_section = { "[Lexical]" ~ NEWLINE* ~ lexical_entry* }
+lexical_entry = { lexical_item ~ "=" ~ syntax_node ~ NEWLINE* }
+lexical_item = { (ASCII_ALPHA | PUNCTUATION)+ }
+
+syntax_node = _{ lambda | moved | feature_set }
+lambda = { "(" ~ syntax_node ~ projection ~ feature_set ~ ")" }
+projection = _{ right_projection | left_projection }
+right_projection = { ">>" }
+left_projection = { ">" }
+
+moved = { "MOVED(" ~ feature_set ~ ")" }
+
+feature_category = { ASCII_ALPHANUMERIC+ }
+feature_value = { ASCII_ALPHANUMERIC+ }
+feature_value_set = { feature_value ~ ("," ~ feature_value)* }
+feature = { ASCII_ALPHANUMERIC+ }
+feature_set = { feature ~ ("-" ~ feature)* }

@@ -1,0 +1,58 @@
+[Features]
+# features
+tense = present, past, future
+number = sg, pl
+person = 1st, 2nd, 3rd
+case = subj, obj
+clause = question, statement, exclamation
+
+[Functional]
+# add feature
+D = D-case
+D = D-number
+Det = Det-number
+C = C-statement
+
+# left projection
+D = (P > D)
+Verb-transitive = (D-obj > V)
+Prep = (D > P)
+C = (P > C)
+
+# left projection + agreement
+Det-number = (N-number > D)
+C-clause = (Punct-clause > S)
+
+# right projection
+D-subj-clause = (V >> C-clause)
+Adj = (N >> N)
+
+# inversion
+D-obj-question = ((MOVED(D-obj) > Inv) >> Inv)
+
+[Lexical]
+# nouns
+apple = N-sg
+room = N-sg
+child = N-sg
+
+# D
+who = D-question
+
+# determinaters
+the = Det
+whose = Det-question
+
+# verbs
+ate = Verb-transitive-past
+
+# prepositions
+in = Prep
+
+# punctuations
+? = Punct-question
+. = Punct-statement
+
+
+# Adj
+naughty = Adj
