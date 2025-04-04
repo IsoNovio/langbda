@@ -8,51 +8,12 @@ pub enum LexiconNode<K> {
     },
     Lambda {
         from: Box<LexiconNode<K>>,
-        to: FeatureSet<K>,
+        to: Box<LexiconNode<K>>,
         project: bool,
     },
     Moved {
         from: FeatureSet<K>,
     },
-}
-
-impl<K> LexiconNode<K> {
-    pub fn get_features(&self, rightmost: Option<bool>) -> Option<&FeatureSet<K>> {
-        match self {
-            LexiconNode::Value {
-                value: SyntaxValue::Features(fs),
-            } => Some(fs),
-            LexiconNode::Moved { from } => Some(from),
-            LexiconNode::Lambda {
-                from,
-                to,
-                project: _,
-            } => match rightmost {
-                Some(false) => from.get_features(rightmost),
-                Some(true) => Some(to),
-                None => None,
-            },
-            _ => None,
-        }
-    }
-    pub fn get_features_mut(&mut self, rightmost: Option<bool>) -> Option<&mut FeatureSet<K>> {
-        match self {
-            LexiconNode::Value {
-                value: SyntaxValue::Features(fs),
-            } => Some(fs),
-            LexiconNode::Moved { from } => Some(from),
-            LexiconNode::Lambda {
-                from,
-                to,
-                project: _,
-            } => match rightmost {
-                Some(false) => from.get_features_mut(rightmost),
-                Some(true) => Some(to),
-                None => None,
-            },
-            _ => None,
-        }
-    }
 }
 
 impl<K> Display for LexiconNode<K>

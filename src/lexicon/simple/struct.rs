@@ -35,21 +35,20 @@ impl<K: Debug + Clone + Ord + Hash> SimpleLexicon<K> {
             .get_subsets(from)
             .into_iter()
             .map(|(key, value)| {
-                let project = if let LexiconNode::Lambda {
-                    from: _,
-                    to: _,
-                    project,
-                } = value
-                {
-                    !project
-                } else {
-                    true
+                let project = match value {
+                    LexiconNode::Lambda {
+                        from: _,
+                        to: _,
+                        project,
+                    } => !project,
+                    _ => true,
                 };
-                LexiconEntry::Functional {
-                    from: key.into_iter().collect(),
-                    to: value,
-                    project,
-                }
+                let project = if project {
+                    Some(key.into_iter().collect())
+                } else {
+                    None
+                };
+                LexiconEntry::Functional { to: value, project }
             })
             .collect()
     }

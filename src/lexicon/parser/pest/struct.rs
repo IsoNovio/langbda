@@ -145,11 +145,11 @@ fn parse_lambda<K: KeyType>(
     let mut res = Vec::new();
     let project = parse_project(pair_dir)?;
     for (l_lnode, subst) in parse_syntax_node(pair_l, ft, subst)? {
-        for (r_fset, subst) in parse_feature_set(pair_r.clone(), ft, subst)? {
+        for (r_lnode, subst) in parse_syntax_node(pair_r.clone(), ft, subst)? {
             res.push((
                 LexiconNode::Lambda {
                     from: Box::new(l_lnode.clone()),
-                    to: r_fset,
+                    to: Box::new(r_lnode.clone()),
                     project,
                 },
                 subst,

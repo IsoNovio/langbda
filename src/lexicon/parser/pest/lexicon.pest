@@ -15,7 +15,7 @@ lexical_entry = { lexical_item ~ "=" ~ syntax_node ~ NEWLINE* }
 lexical_item = { (ASCII_ALPHA | PUNCTUATION)+ }
 
 syntax_node = _{ lambda | moved | feature_set }
-lambda = { "(" ~ syntax_node ~ projection ~ feature_set ~ ")" }
+lambda = { "(" ~ syntax_node ~ projection ~ syntax_node ~ ")" }
 projection = _{ right_projection | left_projection }
 right_projection = { ">>" }
 left_projection = { ">" }

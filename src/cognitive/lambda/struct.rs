@@ -1,6 +1,7 @@
 use super::super::CognitiveModel;
 use super::error::{Error, Result};
 use super::node::Node;
+use super::valid_entry::ValidEntry;
 use crate::syntax::{FeatureSet, SyntaxValue};
 use std::fmt::{Debug, Display};
 
@@ -21,24 +22,20 @@ impl<K: Clone + Ord> LambdaModel<K> {
     fn push(&mut self, expect: Node<K>) {
         self.expects.push(expect);
     }
-    fn push_value(&mut self, value: FeatureSet<K>) {
-        self.push(Node::Value { value });
+    fn push_lambda(&mut self, from: SyntaxValue<K>, to: Node<K>) {
+        self.push(Node::Lambda {
+            from,
+            to: Box::new(to),
+        });
     }
-    fn push_lambda(&mut self, from: SyntaxValue<K>, to: FeatureSet<K>) {
-        self.push(Node::Lambda { from, to });
-    }
-    fn push_lambda_item(&mut self, from: K, to: FeatureSet<K>) {
-        let from = SyntaxValue::Item(from);
-        self.push_lambda(from, to);
-    }
-    fn push_lambda_features(&mut self, from: FeatureSet<K>, to: FeatureSet<K>) -> Result<()> {
+    fn push_lambda_features(&mut self, from: FeatureSet<K>, to: FeatureSet<K>) -> Result<bool> {
         if to.is_subset(&from) {
             self.possibly_project(&from)?;
+            Ok(false)
         } else {
-            let from = SyntaxValue::Features(from);
-            self.push_lambda(from, to);
+            self.push_lambda(SyntaxValue::from(from), Node::from(to));
+            Ok(true)
         }
-        Ok(())
     }
     fn push_projection(&mut self, ignore: FeatureSet<K>) {
         self.push(Node::Projection { ignore });
@@ -63,15 +60,9 @@ impl<K: Clone + Ord> LambdaModel<K> {
             };
 
             if let Some(node) = self.peek_mut() {
-                let onto = match node {
-                    Node::Value { value } => value,
-                    Node::Lambda {
-                        from: SyntaxValue::Features(fs),
-                        ..
-                    } => fs,
-                    _ => return Err(Error::NotFeatureSet),
-                };
-                FeatureSet::project(from, onto, &ignore)?;
+                if let Some(onto) = node.get_features_left_mut() {
+                    FeatureSet::project(from, onto, &ignore)?;
+                }
             }
         }
         Ok(())
@@ -87,142 +78,133 @@ impl<K: Clone + Ord> Default for LambdaModel<K> {
 /// interface with lexicon
 mod lexicon {
     use super::*;
-    use crate::lexicon::{LexiconEntry, LexiconNode};
+    use crate::lexicon::LexiconEntry;
     impl<K: Clone + Ord> LambdaModel<K> {
-        pub fn push_lexicon_lambda(
-            &mut self,
-            from: LexiconNode<K>,
-            to: FeatureSet<K>,
-        ) -> Result<()> {
-            match from {
-                LexiconNode::Value { value } => match value {
-                    SyntaxValue::Item(from) => {
-                        self.push_lambda_item(from, to);
-                    }
-                    SyntaxValue::Features(from) => {
-                        self.push_lambda_features(from, to)?;
-                    }
-                },
+        pub fn push_lexicon_lambda(&mut self, from: ValidEntry<K>, to: Node<K>) -> Result<bool> {
+            // do not add projection if insertion fails due to being subset
 
-                LexiconNode::Lambda {
-                    from: from_from,
-                    to: from_to,
-                    project: from_project,
-                } => {
-                    self.push_lambda_features(from_to, to)?;
-                    if from_project {
-                        let ignore = from_from
-                            .get_features(Some(true))
-                            .cloned()
-                            .unwrap_or_default();
-                        self.push_projection(ignore);
-                    }
-                    self.push_lexicon_node(*from_from)?;
-                }
-                LexiconNode::Moved { from } => {
-                    self.push_lambda_features(from, to)?;
-                }
-            };
-            Ok(())
-        }
-
-        fn push_lexicon_node(&mut self, node: LexiconNode<K>) -> Result<()> {
-            match node {
-                LexiconNode::Value { value } => match value {
-                    SyntaxValue::Item(_) => {
-                        return Err(Error::NotFeatureSet);
-                    }
-                    SyntaxValue::Features(fs) => {
-                        self.push_value(fs);
-                    }
+            match (from, to) {
+                (ValidEntry::Features(from), Node::Value { value: to }) => match to {
+                    SyntaxValue::Features(to) => self.push_lambda_features(from, to),
+                    _ => Err(Error::LambdaToMustBeFeatures),
                 },
-                LexiconNode::Moved { from } => {
-                    self.push_value(from);
+                (ValidEntry::Features(from), to @ Node::Lambda { .. }) => {
+                    let from = SyntaxValue::from(from);
+                    self.push_lambda(from, to);
+                    Ok(true)
                 }
-                LexiconNode::Lambda {
-                    from,
-                    to,
-                    project: _,
-                } => {
-                    self.push_lexicon_lambda(*from, to)?;
+                (
+                    ValidEntry::Lambda {
+                        from: new,
+                        to: from,
+                        project,
+                    },
+                    Node::Value { value: to },
+                ) => {
+                    let to = match to {
+                        SyntaxValue::Features(to) => to,
+                        _ => Err(Error::LambdaToMustBeFeatures)?,
+                    };
+                    if self.push_lambda_features(from, to)? && project {
+                        let ignore = new.get_features_right();
+                        self.push_projection(ignore.clone());
+                    }
+
+                    let new = Node::try_from(*new)?;
+                    self.push(new);
+                    Ok(true)
                 }
+                (
+                    ValidEntry::Lambda {
+                        from: a,
+                        to: b,
+                        project: project_ab,
+                    },
+                    Node::Lambda { from: c, to: d },
+                ) => {
+                    let b = ValidEntry::from(b);
+                    if self.push_lexicon_lambda(b, *d)? && project_ab {
+                        let ignore = (*a).get_features_right();
+                        self.push_projection(ignore.clone());
+                    }
+
+                    let a = Node::try_from(*a)?;
+                    self.push_lambda(c, a);
+                    Ok(true)
+                }
+                (_, Node::Projection { .. }) => Err(Error::LambdaToMustBeFeatures),
             }
-            Ok(())
         }
     }
 
     impl<K: Clone + Ord> CognitiveModel<K> for LambdaModel<K> {
         fn init(target: FeatureSet<K>) -> Self {
             let mut model = Self::new();
-            model.push_value(target);
+            let target = Node::from(target);
+            model.push(target);
             model
         }
+
         fn understood(&self) -> bool {
             self.is_empty()
         }
-        fn receive(&mut self, token: K) -> super::super::super::error::Result<()> {
-            if let Node::Value { value } = self.pop_node()? {
-                self.push_lambda(SyntaxValue::Item(token), value);
-                Ok(())
-            } else {
-                Err(Error::NotFeatureSet)?
+
+        fn demand(&self) -> bool {
+            match self.peek() {
+                Some(node) => match node {
+                    Node::Value { .. } => true,
+                    Node::Lambda { to, .. } => matches!(&**to, Node::Value { .. }),
+                    _ => false,
+                },
+                None => false,
             }
         }
+
+        fn receive(&mut self, token: K) -> super::super::super::error::Result<()> {
+            let from = SyntaxValue::from(token);
+            let to = self.pop_node()?;
+            self.push_lambda(from, to);
+            Ok(())
+        }
+
         fn wonder(&self) -> Option<&SyntaxValue<K>> {
             match self.peek() {
                 Some(Node::Lambda { from, .. }) => Some(from),
                 _ => None,
             }
         }
-        /// entry_from is a subset of target_from
-        /// replace target_from with target_to
+
         fn decide(&mut self, entry: LexiconEntry<K>) -> super::super::super::error::Result<()> {
             let target = self.pop_node()?;
             match target {
                 Node::Lambda {
-                    from: target_from,
-                    to: target_to,
-                } => {
-                    let entry_to = match entry {
+                    from: original_from,
+                    to,
+                } => match (original_from, entry) {
+                    (
+                        SyntaxValue::Features(from_fs),
                         LexiconEntry::Functional {
-                            from: entry_from,
-                            to: mut entry_to,
+                            to: from,
                             project: entry_project,
-                        } => {
-                            if entry_project {
-                                if let SyntaxValue::Features(target_from) = target_from {
-                                    if let Some(entry_onto) = entry_to.get_features_mut(Some(true))
-                                    {
-                                        FeatureSet::project(&target_from, entry_onto, &entry_from)
-                                            .map_err(Error::Syntax)?;
-                                    }
-                                }
-                            };
-                            entry_to
+                        },
+                    ) => {
+                        let mut from = ValidEntry::try_from(from)?;
+                        if let Some(ignore_fs) = entry_project {
+                            let onto_fs = from.get_features_right_mut();
+                            FeatureSet::project(&from_fs, onto_fs, &ignore_fs)
+                                .map_err(Error::Syntax)?;
                         }
-                        LexiconEntry::Lexical(entry) => entry,
-                    };
-                    self.push_lexicon_lambda(entry_to, target_to)?;
-                    Ok(())
-                }
+                        self.push_lexicon_lambda(from, *to)?;
+                    }
+                    (SyntaxValue::Item(_), LexiconEntry::Lexical(from)) => {
+                        let from = ValidEntry::try_from(from)?;
+                        self.push_lexicon_lambda(from, *to)?;
+                    }
+                    _ => Err(Error::QueryAndEntryTypeMismatch)?,
+                },
                 _ => Err(Error::ApplyEntryToNonLambda)?,
             }
-        }
-    }
-}
-
-impl<K: Display> Display for Node<K> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Node::Value { value } => {
-                write!(f, "{}", value)
-            }
-            Node::Lambda { from, to } => {
-                write!(f, "λ({} -> {})", from, to)
-            }
-            Node::Projection { ignore } => {
-                write!(f, ">>(ignore: {})", ignore)
-            }
+            Ok(())
         }
     }
 }
