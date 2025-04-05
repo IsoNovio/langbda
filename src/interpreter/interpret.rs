@@ -31,9 +31,6 @@ pub fn interpret<K: FromStr + Clone + Ord + Display, C: CognitiveModel<K> + Disp
         cogmodel: C,
         text: &str,
     ) -> Result<()> {
-        debug!("remaining: {}", text);
-        debug!("model: {}", cogmodel);
-
         if text.is_empty() && cogmodel.understood() {
             res.push(actions.clone());
             return Ok(());
@@ -41,6 +38,10 @@ pub fn interpret<K: FromStr + Clone + Ord + Display, C: CognitiveModel<K> + Disp
 
         if cogmodel.demand() {
             for (newtoken, remainder) in dialect.tokenizer().tokenize(text) {
+                debug!("model: {}", cogmodel);
+                debug!("newtoken: {}", newtoken);
+                debug!("remainder: {}", remainder);
+
                 actions.push(Action::AddToken(newtoken.clone()));
                 let mut cogmodel = cogmodel.clone();
                 if let Ok(()) = cogmodel.receive(newtoken) {
@@ -52,6 +53,9 @@ pub fn interpret<K: FromStr + Clone + Ord + Display, C: CognitiveModel<K> + Disp
 
         if let Some(value) = cogmodel.wonder() {
             for entry in dialect.lexicon().get_entries(value) {
+                debug!("model: {}", cogmodel);
+                debug!("entry: {}", entry);
+
                 actions.push(Action::ApplyEntry(entry.clone()));
                 let mut cogmodel = cogmodel.clone();
                 if let Ok(()) = cogmodel.decide(entry) {
