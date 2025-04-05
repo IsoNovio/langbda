@@ -21,7 +21,7 @@ A sentence parser and grammaticality checker based on ideas of Lambda Calculus a
 
 ## Write rules using Generative Grammar theories.
 
-![](assets/lexicons/en.lexicon)
+[Example lexicon for English](assets/lexicons/en.lexicon)
 
 ## Get your sentence parsed.
 
