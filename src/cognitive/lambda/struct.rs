@@ -214,6 +214,7 @@ impl<K: Display> Display for LambdaModel<K> {
         let formatted = self
             .expects
             .iter()
+            .rev()
             .map(|expect| format!("{}", expect))
             .collect::<Vec<String>>()
             .join(", ");
