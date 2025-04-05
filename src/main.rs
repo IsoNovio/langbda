@@ -41,7 +41,11 @@ fn main() -> Result<()> {
             let mut tree = follow::<_, TreeModel<_>>(target, actions)?;
             tree.prune().map_err(cognitive::Error::from)?;
 
-            let filename = format!("examples/{}_tree-{}.png", filename_sentence, index + 1);
+            let filename = format!(
+                "assets/examples/{}_tree-{}.png",
+                filename_sentence,
+                index + 1
+            );
             tree.to_png(filename).map_err(cognitive::Error::from)?;
         }
     }
