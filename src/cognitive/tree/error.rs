@@ -25,6 +25,11 @@ pub enum Error {
     Syntax(crate::syntax::Error),
 
     LambdaToIsNestedLambda,
+
+    StdFmt(std::fmt::Error),
+    StdIO(std::io::Error),
+
+    GraphvizDotNotInstalled,
 }
 
 impl std::error::Error for Error {}

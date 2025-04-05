@@ -29,6 +29,12 @@ impl<K> TreeModel<K> {
     fn size(&self) -> usize {
         self.nodes.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+    pub fn get_root(&self) -> NodeID {
+        self.root
+    }
 }
 
 // node-level methods
@@ -47,7 +53,7 @@ impl<K> TreeModel<K> {
     }
 
     // node self
-    fn get_value(&self, id: NodeID) -> Result<&SyntaxValue<K>> {
+    pub fn get_value(&self, id: NodeID) -> Result<&SyntaxValue<K>> {
         Ok(self.get_node(id)?.get_value())
     }
     fn if_done(&self, id: NodeID) -> Result<bool> {
@@ -68,11 +74,6 @@ impl<K> TreeModel<K> {
     fn get_is_left(&self, id: NodeID) -> Result<bool> {
         Ok(self.get_node(id)?.get_is_left())
     }
-
-    fn get_left(&self, id: NodeID) -> Result<Option<NodeID>> {
-        Ok(self.get_node(id)?.get_left())
-    }
-
     fn take_project(&mut self, id: NodeID) -> Result<Option<FeatureSet<K>>> {
         Ok(self.get_node_mut(id)?.take_project())
     }
@@ -81,6 +82,18 @@ impl<K> TreeModel<K> {
         Ok(())
     }
 
+    // node children
+    pub fn get_left(&self, id: NodeID) -> Result<Option<NodeID>> {
+        Ok(self.get_node(id)?.get_left())
+    }
+    pub fn get_right(&self, id: NodeID) -> Result<Option<NodeID>> {
+        Ok(self.get_node(id)?.get_right())
+    }
+
+    // node other
+    pub fn get_moved(&self, id: NodeID) -> Result<Option<NodeID>> {
+        Ok(self.get_node(id)?.get_moved())
+    }
     fn set_moved(&mut self, from: NodeID, to: NodeID) -> Result<()> {
         self.get_node_mut(from)?.set_moved(to);
         Ok(())

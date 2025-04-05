@@ -1,4 +1,5 @@
 mod error;
+mod graph;
 mod node;
 mod r#struct;
 
