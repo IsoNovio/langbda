@@ -9,7 +9,7 @@ mod syntax;
 mod tokenizer;
 mod trie;
 
-use self::cognitive::LambdaModel;
+use self::cognitive::{LambdaModel, TreeModel};
 use self::dialect::{Dialect, English};
 use self::error::Result;
 use self::interpreter::{follow, interpret};
@@ -19,20 +19,18 @@ fn main() -> Result<()> {
     init_logger();
 
     let dialect = English::init();
-    println!("{}", dialect);
 
-    let sentence = "the child jumped.";
+    let sentence = "the child ate an apple in the room.";
     let target = "Sentence";
-    println!(
-        "Interpreting \"{sentence}\" as {target} in {}",
-        dialect.name()
-    );
+    let name = dialect.name();
+    println!("Interpreting \"{sentence}\" as {target} in {name}");
     let result = interpret::<_, LambdaModel<_>>(&dialect, sentence, target)?;
+
     println!("LANGBDA found {} interpretations.", result.len());
     for actions in result {
-        // let tree = follow::<_, TreeModel<_>>(target, actions)?;
-        // println!("Tree:\n{}", tree);
-        follow::<_, LambdaModel<_>>(target, actions)?;
+        let mut tree = follow::<_, TreeModel<_>>(target, actions)?;
+        tree.prune().unwrap();
+        println!("Tree:\n{}", tree);
     }
 
     Ok(())

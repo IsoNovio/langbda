@@ -19,6 +19,26 @@ impl<K> From<FeatureSet<K>> for SyntaxValue<K> {
     }
 }
 
+impl<'a, K> TryInto<&'a FeatureSet<K>> for &'a SyntaxValue<K> {
+    type Error = super::Error;
+    fn try_into(self) -> Result<&'a FeatureSet<K>, Self::Error> {
+        match self {
+            SyntaxValue::Features(fs) => Ok(fs),
+            SyntaxValue::Item(_) => Err(Self::Error::TypeConversion),
+        }
+    }
+}
+
+impl<K> TryInto<FeatureSet<K>> for SyntaxValue<K> {
+    type Error = super::Error;
+    fn try_into(self) -> Result<FeatureSet<K>, Self::Error> {
+        match self {
+            SyntaxValue::Features(fs) => Ok(fs),
+            SyntaxValue::Item(_) => Err(Self::Error::TypeConversion),
+        }
+    }
+}
+
 impl<K: Display> Display for SyntaxValue<K> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

@@ -3,13 +3,21 @@ use crate::syntax::{FeatureSet, SyntaxValue};
 
 #[derive(Debug, Clone)]
 pub struct Node<K> {
+    // self
     id: NodeID,
     value: SyntaxValue<K>,
     done: bool,
+
+    // parent
     parent: Option<NodeID>,
+    is_left: bool,
     project: Option<FeatureSet<K>>,
+
+    // children
     left: Option<NodeID>,
     right: Option<NodeID>,
+
+    // other
     moved: Option<NodeID>,
 }
 
@@ -20,6 +28,7 @@ impl<K> Node<K> {
             value,
             done: false,
             parent: None,
+            is_left: false,
             project: None,
             left: None,
             right: None,
@@ -41,6 +50,9 @@ impl<K> Node<K> {
     pub fn get_value_mut(&mut self) -> &mut SyntaxValue<K> {
         &mut self.value
     }
+    pub fn take_project(&mut self) -> Option<FeatureSet<K>> {
+        self.project.take()
+    }
     pub fn get_project(&self) -> Option<&FeatureSet<K>> {
         self.project.as_ref()
     }
@@ -52,6 +64,15 @@ impl<K> Node<K> {
     }
     pub fn set_parent(&mut self, parent: Option<NodeID>) {
         self.parent = parent;
+    }
+    pub fn get_is_left(&self) -> bool {
+        self.is_left
+    }
+    pub fn set_as_left(&mut self) {
+        self.is_left = true;
+    }
+    pub fn set_as_right(&mut self) {
+        self.is_left = false;
     }
     pub fn get_left(&self) -> Option<NodeID> {
         self.left
@@ -73,28 +94,5 @@ impl<K> Node<K> {
     }
     pub fn number_of_children(&self) -> usize {
         self.left.is_some() as usize + self.right.is_some() as usize
-    }
-    pub fn add_parent(&mut self, parent: NodeID) -> bool {
-        if self.parent.is_none() {
-            self.parent = Some(parent);
-        } else {
-            return false;
-        }
-        true
-    }
-    pub fn add_child(&mut self, child: NodeID, left_first: bool) -> bool {
-        if left_first && self.left.is_none() {
-            self.left = Some(child);
-        } else if !left_first && self.right.is_none() {
-            self.right = Some(child);
-        } else if self.left.is_none() {
-            self.left = Some(child);
-        } else if self.right.is_none() {
-            self.right = Some(child);
-        } else {
-            return false;
-        }
-
-        true
     }
 }

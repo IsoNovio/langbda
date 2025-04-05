@@ -1,5 +1,4 @@
 [Features]
-# features
 tense = present, past, future
 number = sg, pl
 person = 1st, 2nd, 3rd

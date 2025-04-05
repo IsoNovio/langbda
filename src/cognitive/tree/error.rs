@@ -8,8 +8,6 @@ pub enum Error {
     #[from(ignore)]
     NodeNotFound(NodeID),
 
-    NoWorkingNode,
-
     #[from(ignore)]
     NodeHasNoParent(NodeID),
 
@@ -22,15 +20,11 @@ pub enum Error {
     NodeHasNoParentWithID(NodeID, NodeID),
 
     #[from(ignore)]
-    NodeAlreadyHasTwoChildren(NodeID),
-
-    #[from(ignore)]
-    NodeAlreadyHasParent(NodeID),
-
-    #[from(ignore)]
     NodeIsNotFeatures(NodeID),
 
     Syntax(crate::syntax::Error),
+
+    LambdaToIsNestedLambda,
 }
 
 impl std::error::Error for Error {}

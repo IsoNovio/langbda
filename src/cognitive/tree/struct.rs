@@ -4,13 +4,15 @@ use super::error::{Error, Result};
 use super::node::Node;
 use crate::lexicon::LexiconEntry;
 use crate::syntax::{FeatureSet, SyntaxValue};
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TreeModel<K> {
     nodes: Vec<Node<K>>,
-    root: Option<NodeID>,
-    working: Option<NodeID>,
+    root: NodeID,
+    upper_cursor: NodeID,
+    lower_cursor: NodeID,
+    unattached: Vec<NodeID>,
 }
 
 // tree-level methods
@@ -18,15 +20,11 @@ impl<K> TreeModel<K> {
     fn new() -> Self {
         Self {
             nodes: Vec::new(),
-            root: None,
-            working: None,
+            root: 0,
+            upper_cursor: 0,
+            lower_cursor: 0,
+            unattached: Vec::new(),
         }
-    }
-    fn get_working(&self) -> Result<NodeID> {
-        self.working.ok_or(Error::NoWorkingNode)
-    }
-    fn set_working(&mut self, id: NodeID) {
-        self.working = Some(id);
     }
     fn size(&self) -> usize {
         self.nodes.len()
@@ -35,50 +33,48 @@ impl<K> TreeModel<K> {
 
 // node-level methods
 impl<K> TreeModel<K> {
-    /// parent = Option<(parent_id, project, left_first)>
-    fn new_node(
-        &mut self,
-        value: SyntaxValue<K>,
-        parent: Option<(NodeID, Option<FeatureSet<K>>, bool)>,
-    ) -> Result<NodeID> {
+    // node
+    fn new_node(&mut self, value: SyntaxValue<K>) -> NodeID {
         let id = self.size();
         self.nodes.push(Node::new(id, value));
-        if let Some((parent_id, project, left_first)) = parent {
-            self.set_relation(parent_id, id, project, left_first)?;
-        }
-        Ok(id)
+        id
     }
-
     fn get_node(&self, id: NodeID) -> Result<&Node<K>> {
         self.nodes.get(id).ok_or(Error::NodeNotFound(id))
     }
-
     fn get_node_mut(&mut self, id: NodeID) -> Result<&mut Node<K>> {
         self.nodes.get_mut(id).ok_or(Error::NodeNotFound(id))
     }
 
+    // node self
     fn get_value(&self, id: NodeID) -> Result<&SyntaxValue<K>> {
         Ok(self.get_node(id)?.get_value())
     }
-
     fn if_done(&self, id: NodeID) -> Result<bool> {
         Ok(self.get_node(id)?.if_done())
     }
-
     fn set_done(&mut self, id: NodeID) -> Result<()> {
         self.get_node_mut(id)?.set_done();
         Ok(())
     }
 
+    // node parent
     fn get_parent(&self, id: NodeID) -> Result<NodeID> {
         match self.get_node(id)?.get_parent() {
             Some(parent_id) => Ok(parent_id),
             None => Err(Error::NodeHasNoParent(id)),
         }
     }
+    fn get_is_left(&self, id: NodeID) -> Result<bool> {
+        Ok(self.get_node(id)?.get_is_left())
+    }
 
-    fn get_project(&self, id: NodeID) -> Result<Option<&FeatureSet<K>>> {
-        Ok(self.get_node(id)?.get_project())
+    fn get_left(&self, id: NodeID) -> Result<Option<NodeID>> {
+        Ok(self.get_node(id)?.get_left())
+    }
+
+    fn take_project(&mut self, id: NodeID) -> Result<Option<FeatureSet<K>>> {
+        Ok(self.get_node_mut(id)?.take_project())
     }
     fn set_project(&mut self, id: NodeID, project: Option<FeatureSet<K>>) -> Result<()> {
         self.get_node_mut(id)?.set_project(project);
@@ -90,23 +86,34 @@ impl<K> TreeModel<K> {
         Ok(())
     }
 
+    fn set_relation_left(&mut self, parent_id: NodeID, child_id: NodeID) -> Result<()> {
+        let parent = self.get_node_mut(parent_id)?;
+        parent.set_left(Some(child_id));
+        let child = self.get_node_mut(child_id)?;
+        child.set_parent(Some(parent_id));
+        child.set_as_left();
+        Ok(())
+    }
+
+    fn set_relation_right(&mut self, parent_id: NodeID, child_id: NodeID) -> Result<()> {
+        let parent = self.get_node_mut(parent_id)?;
+        parent.set_right(Some(child_id));
+        let child = self.get_node_mut(child_id)?;
+        child.set_parent(Some(parent_id));
+        child.set_as_right();
+        Ok(())
+    }
+
     fn set_relation(
         &mut self,
         parent_id: NodeID,
         child_id: NodeID,
-        project: Option<FeatureSet<K>>,
-        left_first: bool,
+        child_is_left: bool,
     ) -> Result<()> {
-        let parent = self.get_node_mut(parent_id)?;
-        if !parent.add_child(child_id, left_first) {
-            return Err(Error::NodeAlreadyHasTwoChildren(parent_id));
+        match child_is_left {
+            true => self.set_relation_left(parent_id, child_id),
+            false => self.set_relation_right(parent_id, child_id),
         }
-        let child = self.get_node_mut(child_id)?;
-        if !child.add_parent(parent_id) {
-            return Err(Error::NodeAlreadyHasParent(child_id));
-        }
-        child.set_project(project);
-        Ok(())
     }
 
     fn delete_relation(&mut self, parent_id: NodeID, child_id: NodeID) -> Result<()> {
@@ -127,6 +134,38 @@ impl<K> TreeModel<K> {
         }
 
         Ok(())
+    }
+
+    /// add node as left child of upper cursor
+    /// put existing left child to unattached
+    /// move lower cursor to child
+    fn add_left(&mut self, child_id: NodeID) -> Result<()> {
+        let parent_id = self.upper_cursor;
+        if let Some(old_left_id) = self.get_left(parent_id)? {
+            self.delete_relation(parent_id, old_left_id)?;
+            self.unattached.push(old_left_id);
+        }
+        self.set_relation_left(parent_id, child_id)?;
+        self.lower_cursor = child_id;
+        Ok(())
+    }
+
+    /// add node as right child of lower cursor
+    /// move lower cursor to child
+    /// move upper cursor to child
+    fn add_right(&mut self, child_id: NodeID) -> Result<()> {
+        let parent_id = self.lower_cursor;
+        self.set_relation_right(parent_id, child_id)?;
+        self.lower_cursor = child_id;
+        self.upper_cursor = child_id;
+        Ok(())
+    }
+
+    fn add_child(&mut self, child_id: NodeID, is_left: bool) -> Result<()> {
+        match is_left {
+            true => self.add_left(child_id),
+            false => self.add_right(child_id),
+        }
     }
 }
 
@@ -165,36 +204,54 @@ mod lexicon {
         pub fn insert_parent(
             &mut self,
             value: LexiconNode<K>,
-            with_project: Option<&FeatureSet<K>>,
-        ) -> Result<NodeID> {
-            let cur_id = self.get_working()?;
-            self.set_done(cur_id)?;
+            with_project: Option<FeatureSet<K>>,
+        ) -> Result<()> {
+            let cur_id = self.lower_cursor;
+            let cur_is_left = self.get_is_left(cur_id)?;
+            let old_upper_cursor = self.upper_cursor;
 
+            // detach cur from its parent
             let parent_id = self.get_parent(cur_id)?;
-            self.set_working(parent_id);
             self.delete_relation(parent_id, cur_id)?;
 
-            let new_parent_id =
-                self.append_child(value, self.get_project(cur_id)?.cloned(), cur_id)?;
-            self.set_relation(new_parent_id, cur_id, with_project.cloned(), true)?;
-            if let Some(ignore) = with_project {
-                self.project(cur_id, ignore)?;
+            // mark cur as done
+            self.set_done(cur_id)?;
+            self.lower_cursor = parent_id;
+
+            // append new parent as child of old parent
+            let new_parent_id = self.append_child(value, cur_id, cur_is_left)?;
+
+            // link cur and new parent
+            self.set_relation(new_parent_id, cur_id, cur_is_left)?;
+            if let cur_project @ Some(_) = self.take_project(cur_id)? {
+                self.set_project(new_parent_id, cur_project)?
             }
-            Ok(new_parent_id)
+            if let Some(ignore) = with_project {
+                self.project(cur_id, &ignore)?;
+            }
+
+            // re-add unattached nodes after the tree has been adjusted
+            if old_upper_cursor != self.upper_cursor {
+                if let Some(unattached_id) = self.unattached.pop() {
+                    self.add_left(unattached_id)?
+                }
+            }
+
+            // start from lower_cursor
+            // if satisfies parent's features, go upward
+            self.try_project()
         }
 
         fn append_child(
             &mut self,
             value: LexiconNode<K>,
-            project: Option<FeatureSet<K>>,
             trigger: NodeID,
+            child_is_left: bool,
         ) -> Result<NodeID> {
-            let cur_id = self.get_working()?;
-
             match value {
                 LexiconNode::Value { value } => {
-                    let child_id = self.new_node(value, Some((cur_id, project, false)))?;
-                    self.set_working(child_id);
+                    let child_id = self.new_node(value);
+                    self.add_child(child_id, child_is_left)?;
                     Ok(child_id)
                 }
                 LexiconNode::Lambda {
@@ -202,11 +259,14 @@ mod lexicon {
                     to,
                     project: from_project,
                 } => {
-                    let value = SyntaxValue::Features(to);
-                    let child_id = self.new_node(value, Some((cur_id, project, false)))?;
-                    self.set_working(child_id);
+                    let to = match *to {
+                        LexiconNode::Value { value } => Ok(value),
+                        _ => Err(Error::LambdaToIsNestedLambda),
+                    }?;
+                    let child_id = self.new_node(to);
+                    self.add_child(child_id, child_is_left)?;
 
-                    let child_child_id = self.append_child(*from, None, trigger)?;
+                    let child_child_id = self.append_child(*from, trigger, !child_is_left)?;
                     if from_project {
                         let ignore_fs = self.get_features(child_child_id)?;
                         self.set_project(child_child_id, Some(ignore_fs.clone()))?;
@@ -214,132 +274,227 @@ mod lexicon {
                     Ok(child_id)
                 }
                 LexiconNode::Moved { from } => {
-                    let value = SyntaxValue::Features(from);
-                    let child_id = self.new_node(value, Some((cur_id, project, false)))?;
-                    self.set_working(child_id);
+                    let from = SyntaxValue::from(from);
+                    let child_id = self.new_node(from);
+                    self.add_child(child_id, child_is_left)?;
                     self.set_moved(child_id, trigger)?;
                     Ok(child_id)
                 }
             }
         }
 
-        pub fn try_project(&mut self) -> Result<()> {
-            while let Some(cur_id) = self.working {
-                let parent_id = if let Ok(parent_id) = self.get_parent(cur_id) {
-                    parent_id
-                } else {
-                    self.working = None;
-                    break;
-                };
-                if let Some(ignore_fs) = self.get_project(cur_id)? {
-                    let cur_fs = self.get_features(cur_id)?;
-                    let parent_fs = self.get_features(parent_id)?;
-                    if parent_fs.is_subset(cur_fs) {
-                        self.project(cur_id, &ignore_fs.clone()).ok();
-                        self.set_done(cur_id)?;
-                        self.set_done(parent_id)?;
-                    }
-                }
-                if self.if_done(cur_id)? {
-                    self.set_working(parent_id);
-                } else {
-                    break;
+        fn try_project(&mut self) -> Result<()> {
+            let cur_id = self.lower_cursor;
+
+            let parent_id = match self.get_parent(cur_id) {
+                Ok(id) => id,
+                Err(_) => return Ok(()),
+            };
+
+            if !self.if_done(cur_id)? && self.get_is_left(cur_id)? {
+                let cur_fs = self.get_features(cur_id)?;
+                let parent_fs = self.get_features(parent_id)?;
+                if parent_fs.is_subset(cur_fs) {
+                    self.project(cur_id, &parent_fs.clone())?;
+                    self.set_done(cur_id)?;
+                    self.set_done(parent_id)?;
                 }
             }
-            Ok(())
-        }
 
-        //
-        // fn apply_entry aka decide
-        // - insert_parent
-        // - from the working position, project upward, if possible
+            if !self.if_done(cur_id)? {
+                return Ok(());
+            }
+
+            if let Some(ignore_fs) = self.take_project(cur_id)? {
+                self.project(cur_id, &ignore_fs)?
+            }
+
+            self.lower_cursor = parent_id;
+            self.upper_cursor = self.lower_cursor;
+            while self.get_is_left(self.upper_cursor)? {
+                self.upper_cursor = self.get_parent(self.upper_cursor)?
+            }
+            self.try_project()
+        }
     }
 }
 
 impl<K: Ord + Clone> CognitiveModel<K> for TreeModel<K> {
     fn init(target: FeatureSet<K>) -> Self {
         let mut model = Self::new();
-        let root_id = model
-            .new_node(SyntaxValue::Features(target), None)
-            .expect("Cannot fail");
-        model.root = Some(root_id);
-        model.working = Some(root_id);
+        model.new_node(SyntaxValue::Features(target));
         model
     }
     fn understood(&self) -> bool {
-        self.working.is_none()
+        self.if_done(self.lower_cursor).unwrap_or(false)
+    }
+    fn demand(&self) -> bool {
+        true
     }
     fn receive(&mut self, token: K) -> super::super::error::Result<()> {
-        let value = SyntaxValue::Item(token);
-        let cur_id = self.get_working()?;
-        let child_id = self.new_node(value, Some((cur_id, Some(FeatureSet::new()), false)))?;
-        self.set_working(child_id);
+        let new_node = SyntaxValue::from(token);
+        let new_node = self.new_node(new_node);
+        self.add_left(new_node)?;
         Ok(())
     }
     fn wonder(&self) -> Option<&SyntaxValue<K>> {
-        match self.get_working() {
-            Ok(cur_id) => self.get_value(cur_id).ok(),
-            Err(_) => None,
-        }
+        self.get_value(self.lower_cursor).ok()
     }
     fn decide(&mut self, entry: LexiconEntry<K>) -> super::super::error::Result<()> {
         match entry {
             LexiconEntry::Lexical(value) => self.insert_parent(value, None)?,
-            LexiconEntry::Functional { from, to, project } => {
-                let with_project = if project { Some(&from) } else { None };
-                self.insert_parent(to, with_project)?
-            }
+            LexiconEntry::Functional { to, project } => self.insert_parent(to, project)?,
         };
-        self.try_project()?;
         Ok(())
     }
 }
 
 impl<K: Display> TreeModel<K> {
-    fn fmt_node(
+    fn fmt_node_debug(
         &self,
         f: &mut std::fmt::Formatter<'_>,
         id: NodeID,
         mut indent: usize,
-        may_skip: bool,
-        debug_mode: bool,
     ) -> std::fmt::Result {
-        let node = match self.get_node(id) {
-            Ok(node) => node,
-            Err(_) => return Err(std::fmt::Error),
-        };
-        let is_features = matches!(node.get_value(), SyntaxValue::Features(_));
+        let node = self.get_node(id).map_err(|_| std::fmt::Error)?;
 
-        if !(may_skip && is_features) || debug_mode {
-            write!(f, "{}[", " ".repeat(indent))?;
-            if node.get_project().is_some() {
-                write!(f, "★ ")?;
-            }
-            write!(f, "{}]", node.get_id())?;
-            if let Some(moved_id) = node.get_moved() {
-                write!(f, " --> [{}]", moved_id)?;
-            }
-            writeln!(f, " {}", node.get_value())?;
-            indent += 4;
+        // print this node
+        write!(f, "{}[", " ".repeat(indent))?;
+        if node.if_done() {
+            write!(f, "✔  ")?
         }
+        if node.get_project().is_some() {
+            write!(f, "★ ")?;
+        }
+        write!(f, "{}]", node.get_id())?;
+        if let Some(moved_id) = node.get_moved() {
+            write!(f, " --> [{}]", moved_id)?;
+        }
+        write!(f, " {}", node.get_value())?;
+        if id == self.upper_cursor {
+            write!(f, " <--UPPER_CURSOR|")?
+        }
+        if id == self.lower_cursor {
+            write!(f, " <--LOWER_CURSOR|")?
+        }
+        write!(f, "({} children)", node.number_of_children())?;
 
-        let may_skip = is_features && node.number_of_children() == 1;
+        writeln!(f)?;
+
+        // print children
+        indent += 4;
         if let Some(left_id) = node.get_left() {
-            self.fmt_node(f, left_id, indent, may_skip, debug_mode)?;
+            self.fmt_node_debug(f, left_id, indent)?;
         }
         if let Some(right_id) = node.get_right() {
-            self.fmt_node(f, right_id, indent, may_skip, debug_mode)?;
+            self.fmt_node_debug(f, right_id, indent)?;
         }
 
         Ok(())
     }
 }
 
-impl<K: Display> Display for TreeModel<K> {
+impl<K: Display> Debug for TreeModel<K> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(root_id) = self.root {
-            self.fmt_node(f, root_id, 0, false, false)?;
+        if self.size() > 0 {
+            self.fmt_node_debug(f, self.root, 0)?;
         }
+
+        if !self.unattached.is_empty() {
+            writeln!(f, "Unattached subtrees:")?;
+            for id in self.unattached.iter() {
+                self.fmt_node_debug(f, *id, 0)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<K: Display + Clone + Ord> Display for TreeModel<K> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut nodes = Vec::new();
+        if self.size() > 0 {
+            nodes.push((0, 0))
+        }
+
+        while let Some((id, indent)) = nodes.pop() {
+            let node = self.get_node(id).map_err(|_| std::fmt::Error)?;
+
+            // print this node
+            write!(f, "{}[", " ".repeat(indent))?;
+            if node.get_project().is_some() {
+                write!(f, "★ ")?
+            }
+            write!(f, "{}]", node.get_id())?;
+            if let Some(moved_id) = node.get_moved() {
+                write!(f, " --> [{}]", moved_id)?;
+            }
+            write!(f, " {}", node.get_value())?;
+            writeln!(f)?;
+
+            // print children
+            // push right first because nodes is a stack
+            if let Some(right_id) = node.get_right() {
+                nodes.push((right_id, indent + 4))
+            }
+            if let Some(left_id) = node.get_left() {
+                nodes.push((left_id, indent + 4))
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<K: Clone + Ord> TreeModel<K> {
+    pub fn prune(&mut self) -> Result<()> {
+        let mut nodes = Vec::new();
+        if self.size() > 0 {
+            nodes.push(0)
+        }
+
+        let mut parent_features = None;
+        let mut parent_child_cnt = 0;
+        let mut parent_id = 0;
+        while let Some(id) = nodes.pop() {
+            let node = self.get_node(id)?;
+            let features: Option<FeatureSet<K>> = node.get_value().clone().try_into().ok();
+            let child_cnt = node.number_of_children();
+
+            let delete = match (&features, &parent_features) {
+                (Some(fs), Some(parent_fs)) => fs.is_subset(parent_fs) && parent_child_cnt == 1,
+                _ => false,
+            };
+
+            let left_id = node.get_left();
+            let right_id = node.get_right();
+            if delete {
+                self.delete_relation(parent_id, id)?;
+                if let Some(left_id) = left_id {
+                    self.delete_relation(id, left_id)?;
+                    self.set_relation_left(parent_id, left_id)?;
+                    nodes.push(left_id)
+                }
+                if let Some(right_id) = right_id {
+                    self.delete_relation(id, right_id)?;
+                    self.set_relation_right(parent_id, right_id)?;
+                    nodes.push(right_id)
+                }
+                parent_child_cnt = child_cnt;
+            } else {
+                if let Some(left_id) = left_id {
+                    nodes.push(left_id)
+                }
+                if let Some(right_id) = right_id {
+                    nodes.push(right_id)
+                }
+                parent_features = features;
+                parent_child_cnt = child_cnt;
+                parent_id = id;
+            }
+        }
+
         Ok(())
     }
 }

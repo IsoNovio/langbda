@@ -3,10 +3,10 @@ use super::error::{Error, Result};
 use crate::cognitive::CognitiveModel;
 use crate::syntax::FeatureSet;
 use log::debug;
-use std::fmt::Display;
+use std::fmt::Debug;
 use std::str::FromStr;
 
-pub fn follow<K: Clone + FromStr + Ord + Display, C: CognitiveModel<K> + Display>(
+pub fn follow<K: Clone + FromStr + Ord + Debug, C: CognitiveModel<K> + Debug>(
     target: &str,
     actions: Vec<Action<K>>,
 ) -> Result<C> {
@@ -15,12 +15,12 @@ pub fn follow<K: Clone + FromStr + Ord + Display, C: CognitiveModel<K> + Display
     let mut cogmodel = C::init(target);
 
     for action in actions {
-        debug!("{action}");
+        debug!("{action:?}");
         match action {
             Action::AddToken(token) => cogmodel.receive(token)?,
             Action::ApplyEntry(entry) => cogmodel.decide(entry)?,
         }
-        debug!("{cogmodel}");
+        debug!("{cogmodel:?}");
     }
 
     Ok(cogmodel)
