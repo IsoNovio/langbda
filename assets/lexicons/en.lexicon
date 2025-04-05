@@ -2,50 +2,76 @@
 tense = present, past, future
 number = sg, pl
 person = 1st, 2nd, 3rd
-case = subj, obj
+case = subj, obj, nocase
 clause = question, statement, exclamation
 transitivity = transitive, intransitive
 
 [Functional]
-DetH = DetH-number
-DetH-number = (NounP-number > DetP-number)
-DetP = DetP-case
-DetP-subj = TenseS
-DetP-subj = LittleVS
-DetP = (PrepP > DetP)
+# TREE = [xS <- xP -> [xH <- xB -> xC]]
+# xP = x-Phrase
+# xS = x-Specifier
+# xB = x-Bar
+# xH = x-Head
+# xC = x-Complement
 
-TenseH-transitivity = ((MOVED(LittleVH-transitivity) > LittleVP) >> TenseB)
-TenseS = ((MOVED(LittleVS) > TenseB) >> TenseP)
+# Sentence
+ClauseP-clause = (Punct-clause > Sentence-clause)
+
+# Clause
+ClauseP = ClauseP-clause
 TenseP = ClauseP
+
+# Tense
 TenseP = (PrepP > TenseP)
+DetP-subj = ((MOVED(DetP-nocase) > TenseB) >> TenseP)
+VerbH-tense-transitivity = ((MOVED(NuH-transitivity) > NuP) > TenseB)
+AuxH-tense = ((MOVED(AuxH) > AuxP) > TenseB)
 
-LittleVH-transitivity = ((MOVED(VerbH-transitivity) > VerbP) >> LittleVB)
-LittleVS = (LittleVB >> LittleVP)
+# Aux
+AuxH = (NuP > AuxP)
 
+# Nu (i.e., Little V)
+DetP-nocase = (NuB >> NuP)
+NuH-transitivity = ((MOVED(VerbH-transitivity) > VerbP) >> NuB)
+
+# Verb
 VerbH-transitive = (DetP-obj > VerbP)
 VerbH-intransitive = VerbP
 
-ClauseP = ClauseP-clause
-ClauseP-clause = (Punct-clause > Sentence-clause)
+# Det
+DetP = (PrepP > DetP)
+DetP = DetP-case
+DetH-number = (NounP-number > DetP-number)
+DetH = DetH-number
 
+# Prep
 PrepH = (DetP > PrepP)
 
 [Lexical]
 # det
 the = DetH
 an = DetH-sg
+whose = DetH-question
 
 # nouns
 child = NounP-sg
 apple = NounP-sg
 room = NounP-sg
 
-# verbs
-ate = TenseH-past-transitive
-jumped = TenseH-past-intransitive
+# verb
+ate = VerbH-past-transitive
+jumped = VerbH-past-intransitive
+did = VerbH-past-transitive
+
+# aux
+did = AuxH-past
+
+# little V
+eat = NuH-transitive
 
 # prepositions
 in = PrepH
 
 # punctuations
 . = Punct-statement
+? = Punct-question

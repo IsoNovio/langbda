@@ -21,7 +21,12 @@ fn main() -> Result<()> {
     let dialect = English::init();
     let name = dialect.name();
 
-    let examples = vec![("the child ate an apple in the room.", "Sentence")];
+    let examples = vec![
+        ("the child ate an apple in the room.", "Sentence"),
+        // ("the child did eat an apple.", "Sentence"), // still unsupported: see roadmap
+        // ("did the child eat an apple?", "Sentence"), // still unsupported: see roadmap
+        // ("whose apple did the child eat?", "Sentence"), // still unsupported: see roadmap
+    ];
 
     for (sentence, target) in examples {
         println!("Interpreting \"{sentence}\" as {target} in {name}");
