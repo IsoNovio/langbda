@@ -27,5 +27,5 @@ A sentence parser and grammaticality checker based on ideas of Lambda Calculus a
 
 Below shows how the model captures the two possible interpretations of the sentence "The child ate an apple in the room.", which is created by the scoping ambiguity of the prepositional phrase "in the room".
 
-![](examples/the-child-ate-an-apple-in-the-room-_tree-1.png "\"in the room\" modifies the TP")
-![](examples/the-child-ate-an-apple-in-the-room-_tree-2.png "\"in the room\" modifies the DP")
+![](assets/examples/the-child-ate-an-apple-in-the-room-_tree-1.png "\"in the room\" modifies the TP")
+![](assets/examples/the-child-ate-an-apple-in-the-room-_tree-2.png "\"in the room\" modifies the DP")
