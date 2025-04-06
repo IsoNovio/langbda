@@ -7,7 +7,7 @@ A sentence parser and grammaticality checker based on ideas of Lambda Calculus a
 - [ ] Support branching on `receive()` and `decide()`
   - `(A -> (B -> C)) <=> (B -> (A -> C))`
     - Redefine `Node::Lambda` as `{ from: Vec<Value>, to: Value }`
-  - `((A -> B) -> (C -> D)) ==> ((C -> A) -> (B -> D)) OR (A, (B -> (C -> D)))`
+  - `((A -> B) -> (C -> D)) ==> ((C -> A), (B -> D)) OR (A, (B -> (C -> D)))`
     - Default to `(A, (B -> (C -> D)))`
     - Add `Node::From` to denote dangling `(A ->)`
       - `(A ->)` is produced as a decomposition of `([A, B] -> B))`
