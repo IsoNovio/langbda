@@ -4,6 +4,7 @@ A program that models the cognitive process of a listener receiving a linear seq
 
 ## Roadmap
 
+- [ ] Projection onto `MOVED()`
 - [ ] Write a documentation to explain the theory
 - [ ] Support branching on `receive()` and `decide()`
   - `(A -> (B -> C)) <=> (B -> (A -> C))`
