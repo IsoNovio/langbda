@@ -5,7 +5,6 @@ A program that models the cognitive process of a listener receiving a linear seq
 ## Roadmap
 
 - [ ] Projection onto `MOVED()`
-- [ ] Write a documentation to explain the theory
 - [ ] Support branching on `receive()` and `decide()`
   - `(A -> (B -> C)) <=> (B -> (A -> C))`
     - Redefine `Node::Lambda` as `{ from: Vec<Value>, to: Value }`
@@ -14,11 +13,17 @@ A program that models the cognitive process of a listener receiving a linear seq
     - Add `Node::From` to denote dangling `(A ->)`
       - `(A ->)` is produced as a decomposition of `([A, B] -> B))`
       - `(A ->)` automatically attaches to a newly inserted node
+- [ ] Not in plan: Add a NOVALUE value to every category
+  - Possibly with new syntax `!`
+
+### Theory
+- [ ] Write a documentation to explain the theory
+- [ ] Collin Phillips (1996, MIT)
+
+### User Experience
 - [ ] Not in plan: A language server for .lexicon files
   - Detect unreachable entries
   - Detect possible cycles
-- [ ] Not in plan: Add a NOVALUE value to every category
-  - Possibly with new syntax `!`
 
 ## Define a lexicon
 
