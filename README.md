@@ -4,7 +4,6 @@ A program that models the cognitive process of a listener receiving a linear seq
 
 ## Roadmap
 
-- [ ] `K` as a member type of `Dialect`
 - [ ] Projection onto `MOVED()`
 - [ ] Support branching on `receive()` and `decide()`
   - `(A -> (B -> C)) <=> (B -> (A -> C))`
