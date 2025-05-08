@@ -14,6 +14,8 @@ A program that models the cognitive process of a listener receiving a linear seq
     - Add `Node::From` to denote dangling `(A ->)`
       - `(A ->)` is produced as a decomposition of `([A, B] -> B))`
       - `(A ->)` automatically attaches to a newly inserted node
+- [ ] Feature: Detect whether a phrase appear in a conjugated sentence.
+  - e.g., "eruitzien" in Hoe ziet het eruit?
 - [ ] Not in plan: Add a NOVALUE value to every category
   - Possibly with new syntax `!`
 
