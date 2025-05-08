@@ -11,12 +11,16 @@ use std::str::FromStr;
 
 pub type Actions<K> = Vec<Action<K>>;
 
-pub fn interpret<K: FromStr + Clone + Ord + Display, C: CognitiveModel<K> + Display>(
-    dialect: &impl Dialect<K>,
+pub fn interpret<D, C>(
+    dialect: &D,
     text: &str,
     target: &str,
-) -> Result<Vec<Actions<K>>> {
-    let target = K::from_str(target).map_err(|_| Error::FromStr)?;
+) -> Result<Vec<Actions<D::Token>>> where
+    D: Dialect,
+    D::Token: FromStr + Clone + Ord + Display,
+    C: CognitiveModel<D::Token> + Display
+{
+    let target = D::Token::from_str(target).map_err(|_| Error::FromStr)?;
     let target = FeatureSet::from_category(target);
     let cogmodel = C::init(target);
 
@@ -24,13 +28,17 @@ pub fn interpret<K: FromStr + Clone + Ord + Display, C: CognitiveModel<K> + Disp
     let mut actions = Vec::new();
 
     step(dialect, &mut res, &mut actions, cogmodel, text)?;
-    fn step<K: FromStr + Clone + Display, C: CognitiveModel<K> + Display>(
-        dialect: &impl Dialect<K>,
-        res: &mut Vec<Actions<K>>,
-        actions: &mut Actions<K>,
+    fn step<D, C>(
+        dialect: &D,
+        res: &mut Vec<Actions<D::Token>>,
+        actions: &mut Actions<D::Token>,
         cogmodel: C,
         text: &str,
-    ) -> Result<()> {
+    ) -> Result<()> where
+        D: Dialect,
+        D::Token: FromStr + Clone + Display,
+        C: CognitiveModel<D::Token> + Display
+    {
         if text.is_empty() && cogmodel.understood() {
             res.push(actions.clone());
             return Ok(());

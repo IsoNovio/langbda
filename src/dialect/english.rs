@@ -12,14 +12,16 @@ pub struct English {
     tokenizer: SimpleTokenizer,
 }
 
-impl Dialect<GlobalKey> for English {
+impl Dialect for English {
+    type Token = GlobalKey;
+
     fn name(&self) -> &str {
         &self.name
     }
-    fn lexicon(&self) -> &impl crate::lexicon::Lexicon<GlobalKey> {
+    fn lexicon(&self) -> &impl crate::lexicon::Lexicon<Self::Token> {
         &self.lexicon
     }
-    fn tokenizer(&self) -> &impl crate::tokenizer::Tokenizer<GlobalKey> {
+    fn tokenizer(&self) -> &impl crate::tokenizer::Tokenizer<Self::Token> {
         &self.tokenizer
     }
 }
